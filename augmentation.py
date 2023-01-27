@@ -62,33 +62,45 @@ def choose_random_voxel(image_shape):
     return voxel
 
 
-def generate_smooth_peaked_vector_field(image_shape, peak_voxel, peak_vector, scale=1):
+def generate_smooth_peaked_vector_field(image_shape, peak_voxel, peak_vector, peak_width_voxels=(1,1,1)):
     vector_field = np.empty((*image_shape, 3))
     x, y, z = np.mgrid[0:image_shape[0], 0:image_shape[1], 0:image_shape[2]]
     for axis in range(3):
-        cauchy_generator = multivariate_t(loc=peak_voxel, shape=scale, df=1)
+        cauchy_generator = multivariate_t(loc=peak_voxel, shape=peak_width_voxels, df=1)
         vector_field[:, :, :, axis] = cauchy_generator.pdf(np.stack((x, y, z), axis=-1))
         vector_field[:, :, :, axis] *= peak_vector[axis] / cauchy_generator.pdf(peak_voxel)
     return vector_field
 
 
-def generate_random_peaked_vector_field(image_shape, maximum_displacements_voxels=(10, 10, 10), peak_count=1, scale=1):
+def generate_random_peaked_vector_field(image_shape, maximum_displacements_voxels=(10, 10, 10), peak_count=1, peak_width_voxels=(1,1,1)):
     vector_field = np.zeros((*image_shape, 3))
     for i in range(peak_count):
         peak_voxel = choose_random_voxel(image_shape)
         peak_vector = choose_random_displacement_rectangular(maximum_displacements_voxels)
-        vector_field += generate_smooth_peaked_vector_field(image_shape, peak_voxel, peak_vector, scale)
+        vector_field += generate_smooth_peaked_vector_field(image_shape, peak_voxel, peak_vector, peak_width_voxels)
+    # print(np.max())
     return vector_field
 
 
-def generate_random_vector_field_transform(reference_image, maximum_displacements_mm=(10, 10, 10), peak_count=1, scale=1):
-    maximum_displacements_voxels = convert_mm_to_voxels_3d(maximum_displacements_mm)
+def generate_random_vector_field_transform(reference_image, maximum_displacements_mm=(10, 10, 10), peak_count=1, peak_width_mm=(1,1,1)):
+    maximum_displacements_voxels = convert_mm_to_voxels_3d(maximum_displacements_mm, reference_image)
+    peak_width_voxels = convert_mm_to_voxels_3d(peak_width_mm, reference_image)
     vector_field = generate_random_peaked_vector_field(reference_image.GetSize()[::-1], maximum_displacements_voxels,
-                                                       peak_count, scale)
+                                                       peak_count, peak_width_voxels)
     vector_image = sitk.GetImageFromArray(vector_field, isVector=True)
-    displacement_field = sitk.InvertDisplacementField(vector_image)
+    # print(vector_image.GetDimension())
+    # print(vector_image.GetNumberOfComponentsPerPixel())
+    print(np.max(sitk.GetArrayFromImage(vector_image).flatten()))
+    displacement_field = sitk.InverseDisplacementField(vector_image)
+    # print(displacement_field.GetDimension())
+    # print(displacement_field.GetNumberOfComponentsPerPixel())
+    print(np.max(sitk.GetArrayFromImage(displacement_field).flatten()))
     displacement_field.CopyInformation(reference_image)
+    # print(displacement_field.GetDimension())
+    # print(displacement_field.GetNumberOfComponentsPerPixel())
+    print(np.max(sitk.GetArrayFromImage(displacement_field).flatten()))
     transform = sitk.DisplacementFieldTransform(displacement_field)
+    # print(transform.GetDimension())
     # transform.SetDisplacementField(displacement_field)
     return transform
 
@@ -103,7 +115,7 @@ def random_rotation_transform(maximum_rotation=0.1):
 
 
 def random_translation_transform(maximum_translation_mm=5):
-    vector = choose_random_vector(maximum_translation_mm)
+    vector = choose_random_vector_spherical(maximum_translation_mm)
     translation_transform = sitk.TranslationTransform(3, tuple(vector))
     return translation_transform
 
@@ -142,10 +154,12 @@ def randomly_augment_image(image, scale_factor_bounds=1, maximum_rotation=0, max
     return augmented_image, transform
 
 
-def randomly_deform_image(image, maximum_displacements_mm=(10, 10, 10), peak_count=1, scale=1, default_value=0):
+def randomly_deform_image(image, maximum_displacements_mm=(10, 10, 10), peak_count=1, peak_width_mm=(1,1,1), default_value=0):
     if type(maximum_displacements_mm) is int or type(maximum_displacements_mm) is float:
         maximum_displacements_mm = (maximum_displacements_mm, maximum_displacements_mm, maximum_displacements_mm)
-    transform = generate_random_vector_field_transform(image, maximum_displacements_mm, peak_count, scale)
+    if type(peak_width_mm) is int or type(peak_width_mm) is float:
+        peak_width_mm = (peak_width_mm, peak_width_mm, peak_width_mm)
+    transform = generate_random_vector_field_transform(image, maximum_displacements_mm, peak_count, peak_width_mm)
     deformed_image = apply_transform(
         input_image=image,
         reference_image=image,
