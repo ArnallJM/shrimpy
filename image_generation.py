@@ -8,6 +8,7 @@ from .augmentation import random_augmentation_transform,  generate_random_vector
 from .augmentation import random_rotation_transform, random_translation_transform, random_scale_transform
 from .pipeline import read_augment_write, read_augment_write_directory
 from .intensity import randomly_augment_image_intensity, apply_noise
+from .pipeline import read_patient
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import warnings
@@ -111,6 +112,21 @@ def create_augmentation_visualisaitons(augmentations_directory, visualisations_d
             print(augmentation_name)
 
 
+def create_image_visualisations(patients_directory, visualisations_directory):
+    patients_directory = Path(patients_directory)
+    visualisations_directory = Path(visualisations_directory)
+    visualisations_directory.mkdir(parents=True, exist_ok=True)
+    image_T1_name = "IMG_T1.nii.gz"
+    image_T2_name = "IMG_T2.nii.gz"
+    contour_name = "MASK_TUMOUR.nii.gz"
+    for patient_directory in patients_directory.iterdir():
+        patient_name, patient_dictionary = read_patient(patient_directory)
+        fig = visualise_image(patient_dictionary[image_T1_name], contour=patient_dictionary[contour_name], save_name=visualisations_directory/f"{patient_name}_T1.png")
+        plt.close(fig)
+        fig = visualise_image(patient_dictionary[image_T2_name], contour=patient_dictionary[contour_name], save_name=visualisations_directory/f"{patient_name}_T2.png")
+        plt.close(fig)
+        print(patient_name)
+
 def collate_augmentation_visualisations(visualisations_directory, images=5, one_patient=None, original_directory=None, save_name=None):
     if (one_patient is None) and (original_directory is not None):
         warnings.warn("Cannot include original for multi-patient visualisation.")
@@ -121,8 +137,8 @@ def collate_augmentation_visualisations(visualisations_directory, images=5, one_
     image_number = 0
     if original_directory is not None and one_patient is not None:
         original_directory = Path(original_directory)
-        image_T1 = mpimg.imread(original_directory / "original_T1.png")
-        image_T2 = mpimg.imread(original_directory / "original_T2.png")
+        image_T1 = mpimg.imread(original_directory / f"{one_patient}_T1.png")
+        image_T2 = mpimg.imread(original_directory / f"{one_patient}_T2.png")
         axs[0,0].imshow(image_T1)
         # axs[0,0].set_axis_off()
         axs[0,0].tick_params(which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
