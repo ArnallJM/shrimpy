@@ -3,7 +3,7 @@ import SimpleITK as sitk
 from scipy.stats import multivariate_t
 from scipy.ndimage import convolve
 from tqdm.auto import tqdm
-from platipy.imaging.registration.utils import apply_transform
+# from platipy.imaging.registration.utils import apply_transform
 from .rng import rng
 import time
 
@@ -14,6 +14,54 @@ KERNEL_CACHE = {
     "distribution_shape": None,
     "distribution_function": None,
 }
+
+
+# Taken from platipy
+def apply_transform(
+    input_image,
+    reference_image=None,
+    transform=None,
+    default_value=0,
+    interpolator=sitk.sitkNearestNeighbor,
+):
+    """
+    Transform a volume of structure with the given deformation field.
+
+    Args
+        input_image (SimpleITK.Image): The image, to which the transform is applied
+        reference_image (SimpleITK.Image): The image will be resampled into this reference space.
+        transform (SimpleITK.Transform): The transformation
+        default_value: Default (background) value. Defaults to 0.
+        interpolator (int, optional): The interpolation order.
+                                Available options:
+                                    - SimpleITK.sitkNearestNeighbor
+                                    - SimpleITK.sitkLinear
+                                    - SimpleITK.sitkBSpline
+                                Defaults to SimpleITK.sitkNearestNeighbor
+
+    Returns
+        (SimpleITK.Image): the transformed image
+
+    """
+    original_image_type = input_image.GetPixelID()
+
+    resampler = sitk.ResampleImageFilter()
+
+    if reference_image:
+        resampler.SetReferenceImage(reference_image)
+    else:
+        resampler.SetReferenceImage(input_image)
+
+    if transform:
+        resampler.SetTransform(transform)
+
+    resampler.SetDefaultPixelValue(default_value)
+    resampler.SetInterpolator(interpolator)
+
+    output_image = resampler.Execute(input_image)
+    output_image = sitk.Cast(output_image, original_image_type)
+
+    return output_image
 
 
 def choose_random_direction():
@@ -104,6 +152,7 @@ def full_kernel(image_shape, distribution_shape=1, distribution_function=gaussia
     if cached_kernel_is_fine(image_shape, distribution_shape, distribution_function):
         return KERNEL_CACHE["kernel"]
     print("generating and caching new kernel")
+    KERNEL_CACHE["kernel"] = None
     image_shape = np.array(image_shape)
     full_kernel_shape = image_shape*2-1
     x, y, z = np.mgrid[0:full_kernel_shape[0], 0:full_kernel_shape[1], 0:full_kernel_shape[2]]
@@ -179,19 +228,24 @@ def precalculated_generate_smooth_peaked_vector_field(image_shape, kernel, peak_
     return vector_field
 
 
-def precalculated_generate_random_peaked_vector_field(image_shape, maximum_displacements_voxels=(10,10,10), peak_count=1, peak_width_voxels=1, kernel="gaussian"):
+def precalculated_generate_random_peaked_vector_field(image_shape, maximum_displacements_voxels=(10,10,10), peak_count=1, peak_width_voxels=1, kernel="gaussian", verbose=False):
     # now = time.time()
     image_shape = np.array(image_shape)
     vector_field = np.zeros((*image_shape, 3))
-    if kernel == "gaussian":
-        distribution_function = gaussian
-    elif kernel == "cauchy":
-        distribution_function = cauchy
+    if type(kernel) == str:
+        if kernel == "gaussian":
+            distribution_function = gaussian
+        elif kernel == "cauchy":
+            distribution_function = cauchy
+        else:
+            raise ValueError("kernel must be gaussian or cauchy")
+        kernel = full_kernel(image_shape, distribution_shape=peak_width_voxels, distribution_function=distribution_function)
+    if verbose:
+        print("generating peaks:")
+        iterator = tqdm(range(peak_count))
     else:
-        raise ValueError("kernel must be gaussian or cauchy")
-    kernel = full_kernel(image_shape, distribution_shape=peak_width_voxels, distribution_function=distribution_function)
-    print("generating peaks:")
-    for i in tqdm(range(peak_count)):
+        iterator = range(peak_count)
+    for i in iterator:
         # print(f"Calculating peak {i}")
         peak_voxel = choose_random_voxel(image_shape)
         peak_vector = choose_random_displacement_rectangular(maximum_displacements_voxels)
@@ -249,12 +303,12 @@ def consistent_vector_field_transform(reference_image, peak_vectors_mm, peak_vox
 
 
 def generate_random_vector_field_transform(reference_image, maximum_displacements_mm=(10, 10, 10), peak_count=1,
-                                           peak_width_mm=(1, 1, 1)):
+                                           peak_width_mm=(1, 1, 1), verbose=False, kernel=None):
     maximum_displacements_voxels = convert_mm_to_voxels_3d(maximum_displacements_mm, reference_image)
     peak_width_voxels = convert_mm_to_voxels_3d(peak_width_mm, reference_image)
     displacement_field_array = precalculated_generate_random_peaked_vector_field(reference_image.GetSize()[::-1],
                                                                    maximum_displacements_voxels,
-                                                                   peak_count, peak_width_voxels)
+                                                                   peak_count, peak_width_voxels, verbose=verbose, kernel=kernel)
     displacement_field = sitk.GetImageFromArray(displacement_field_array, isVector=True)
     # inverse_filter = sitk.InverseDisplacementFieldImageFilter()
     # inverse_filter.SetReferenceImage(vector_image)
@@ -314,12 +368,12 @@ def randomly_augment_image(image, scale_factor_bounds=1, maximum_rotation=0, max
 
 
 def randomly_deform_image(image, maximum_displacements_mm=(10, 10, 10), peak_count=1, peak_width_mm=(1, 1, 1),
-                          default_value=0):
+                          default_value=0, verbose=False):
     if type(maximum_displacements_mm) is int or type(maximum_displacements_mm) is float:
         maximum_displacements_mm = (maximum_displacements_mm, maximum_displacements_mm, maximum_displacements_mm)
     if type(peak_width_mm) is int or type(peak_width_mm) is float:
         peak_width_mm = (peak_width_mm, peak_width_mm, peak_width_mm)
-    transform = generate_random_vector_field_transform(image, maximum_displacements_mm, peak_count, peak_width_mm)
+    transform = generate_random_vector_field_transform(image, maximum_displacements_mm, peak_count, peak_width_mm, verbose=verbose)
     deformed_image = apply_transform(
         input_image=image,
         reference_image=image,

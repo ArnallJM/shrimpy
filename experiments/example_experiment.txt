@@ -1,0 +1,20 @@
+shrimpy/example_patients_list.txt
+shrimpy/test_patients_list.txt
+artemis_simulation/project/RDS-FSC-PetLabAug-RW/DATA
+artemis_simulation/project/RDS-FSC-PetLabAug-RW/DATA
+artemis_simulation/project/RDS-FSC-PetLabAug-RW/nnUNet_raw_data_base/nnUNet_raw_data/task599_example
+0
+example
+Example experiment using 5 unaugmented patients
+
+
+HOW TO USE:
+(note, all lines below 8 will be ignored)
+1   training patient names text file
+2   test patient names text file
+3   training patients source directory
+4   test patients source directory
+5   nnUNet task raw data directory
+6   number of augmentations per patient
+7   task name
+8   task description

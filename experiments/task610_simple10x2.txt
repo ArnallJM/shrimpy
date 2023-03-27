@@ -1,0 +1,20 @@
+experiments/patient_list_train10.txt
+experiments/patients_list_test27.txt
+SIMPLE_AUGMENTATIONS
+DATA
+nnUNet_raw_data_base/nnUNet_raw_data/task610_simple10x2
+2
+simple10x2
+Simple augmentation, 10 patients, 2x augmentation
+
+
+HOW TO USE:
+(note, all lines below 8 will be ignored)
+1   training patient names text file
+2   test patient names text file
+3   training patients source directory
+4   test patients source directory
+5   nnUNet task raw data directory
+6   number of augmentations per patient
+7   task name
+8   task description
