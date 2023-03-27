@@ -55,10 +55,10 @@ def create_raw_database(patient_paths_list, task_directory, task_name=None, test
     datum_dicts = []
     for patient_number in range(len(patient_paths_list)):
         for modality_number in range(len(IMAGE_MODALITIES)):
-            source = Path(".")/patient_paths_list[patient_number]/IMAGE_MODALITIES[modality_number]
+            source = patient_paths_list[patient_number]/IMAGE_MODALITIES[modality_number]
             destination = images_directory/f"{task_name}_{str(patient_number).zfill(4)}_{str(modality_number).zfill(4)}.nii.gz"
             # destination.symlink_to(source)
-            os.symlink(source, destination)
+            os.symlink(source.absolute(), destination)
         if test:
             datum_dict = f"./imagesTr/{task_name}_{str(patient_number).zfill(4)}.nii.gz"
         else:
