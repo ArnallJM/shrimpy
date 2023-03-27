@@ -55,7 +55,7 @@ def create_raw_database(patient_paths_list, task_directory, task_name=None, test
     datum_dicts = []
     for patient_number in range(len(patient_paths_list)):
         for modality_number in range(len(IMAGE_MODALITIES)):
-            source = patient_paths_list[patient_number]/IMAGE_MODALITIES[modality_number]
+            source = Path(".")/patient_paths_list[patient_number]/IMAGE_MODALITIES[modality_number]
             destination = images_directory/f"{task_name}_{str(patient_number).zfill(4)}_{str(modality_number).zfill(4)}.nii.gz"
             # destination.symlink_to(source)
             os.symlink(source, destination)
@@ -133,7 +133,7 @@ def read_and_generate_experiment(experiment_file):
         task_description = args[7]
     # arg_length = min(len(args), 8)
     # args = args[:arg_length]
-    print(args[:8])
+    # print(args[:8])
     generate_database(*args[:6], task_name=task_name, task_description=task_description)
 
 
