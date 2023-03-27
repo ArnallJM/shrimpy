@@ -43,7 +43,9 @@ def collate_patient_paths(patient_name_list, source_directory, number_of_augment
     return patient_paths_list
 
 
-def create_raw_database(patient_paths_list, task_directory, task_name="GENERIC", test=False):
+def create_raw_database(patient_paths_list, task_directory, task_name=None, test=False):
+    if task_name is None:
+        task_name = "GENERIC"
     task_directory = Path(task_directory)
     images_directory = task_directory/"imagesTs" if test else task_directory/"imagesTr"
     images_directory.mkdir(parents=True, exist_ok=True)
@@ -113,8 +115,8 @@ def generate_database(train_patient_name_list, test_patient_name_list, train_dir
         test_patient_name_list = read_patient_name_list_from_file(test_patient_name_list)
     train_patient_paths_list = collate_patient_paths(train_patient_name_list, train_directory, number_of_augmentations)
     test_patient_paths_list = collate_patient_paths(test_patient_name_list, test_directory, 0)
-    train_datum_dicts = create_raw_database(train_patient_paths_list, task_directory, test=False)
-    test_datum_dicts = create_raw_database(test_patient_paths_list, task_directory, test=True)
+    train_datum_dicts = create_raw_database(train_patient_paths_list, task_directory, task_name=task_name, test=False)
+    test_datum_dicts = create_raw_database(test_patient_paths_list, task_directory, task_name=task_name, test=True)
     create_database_json(task_directory, train_datum_dicts, test_datum_dicts, task_name, task_description)
 
 
@@ -131,7 +133,7 @@ def read_and_generate_experiment(experiment_file):
         task_description = args[7]
     # arg_length = min(len(args), 8)
     # args = args[:arg_length]
-    # print(args)
+    print(args[:8])
     generate_database(*args[:6], task_name=task_name, task_description=task_description)
 
 
