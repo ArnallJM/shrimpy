@@ -70,7 +70,9 @@ def create_raw_database(patient_paths_list, task_directory, task_name="GENERIC",
     return datum_dicts
 
 
-def create_database_json(task_directory, train_datum_dicts, test_datum_dicts=None, task_name="GENERIC", task_description=None):
+def create_database_json(task_directory, train_datum_dicts, test_datum_dicts=None, task_name=None, task_description=None):
+    if task_name is None:
+        task_name = "GENERIC"
     if task_description is None:
         task_description = "GENERIC DESCRIPTION: training nnUNet on augmented data"
     if test_datum_dicts is None:
@@ -99,7 +101,7 @@ def create_database_json(task_directory, train_datum_dicts, test_datum_dicts=Non
         json.dump(data_dict, file)
 
 
-def generate_database(train_patient_name_list, test_patient_name_list, train_directory, test_directory, task_directory, number_of_augmentations, task_name="GENERIC", task_description=None):
+def generate_database(train_patient_name_list, test_patient_name_list, train_directory, test_directory, task_directory, number_of_augmentations, task_name=None, task_description=None):
     number_of_augmentations = int(number_of_augmentations)
     assert number_of_augmentations >= 0
     train_directory = Path(train_directory)
@@ -116,19 +118,25 @@ def generate_database(train_patient_name_list, test_patient_name_list, train_dir
     create_database_json(task_directory, train_datum_dicts, test_datum_dicts, task_name, task_description)
 
 
-def read_and_run_experiment(experiment_file):
+def read_and_generate_experiment(experiment_file):
     with open(experiment_file, 'r') as file:
         args = [line.strip() for line in file.readlines()]
     assert len(args) >= 6
     # print(args)
-    arg_length = min(len(args), 8)
-    args = args[:arg_length]
+    task_name = None
+    task_description = None
+    if len(args) >= 7:
+        task_name = args[6]
+    if len(args) >= 8:
+        task_description = args[7]
+    # arg_length = min(len(args), 8)
+    # args = args[:arg_length]
     # print(args)
-    generate_database(*args)
+    generate_database(*args[:6], task_name=task_name, task_description=task_description)
 
 
 def main(experiment_file):
-    read_and_run_experiment(experiment_file)
+    read_and_generate_experiment(experiment_file)
 
 
 if __name__ == "__main__":
