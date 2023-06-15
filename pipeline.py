@@ -82,7 +82,7 @@ def augment_patient_intensity(patient_dictionary):
 def augment_patient(patient_dictionary, kernel=None, simple=False):
     # TODO decide whether to transform or change intensity first
     reference_image = patient_dictionary[REFERENCE_IMAGE_MODALITY]
-    if simple:
+    if not simple:
         augmentation_transforms = [augmentation_function(reference_image, kernel) for augmentation_function in AUGMENTATION_TRANSFORMS]
     else:
         augmentation_transforms = [AUGMENTATION_TRANSFORMS[-1](reference_image, kernel)]
@@ -97,6 +97,7 @@ def write_patient(patient_dictionary, patient_directory):
     location.mkdir(parents=True, exist_ok=True)
     for modality in patient_dictionary:
         image = patient_dictionary[modality]
+        image = sitk.Cast(image, sitk.sitkInt16)
         sitk.WriteImage(image, str(location / modality))
 
 
@@ -132,7 +133,7 @@ def read_augment_write(patient_directory, augmentations_directory, number_of_aug
         print(error)
         return
     assert (number_of_augmentations <= 1000)
-    if check_patient_complete(patient_name, augmentations_directory, number_of_augmentations):
+    if not replace_existing and check_patient_complete(patient_name, augmentations_directory, number_of_augmentations):
         print(f"{patient_name} already sufficiently augmented")
         # clear_dictionary(patient_dictionary)
         del patient_dictionary
@@ -204,7 +205,6 @@ def read_augment_write_directory(patients_directory, augmentations_directory, nu
 
     for i in range(len(patient_directories)):
         read_augment_write(patient_directories[i], augmentations_directory, number_of_augmentations_per_patient[i], replace_existing, multi=multi, simple=simple)
-
 
 if __name__ == "__main__":
     # usage: python pipeline.py PATIENTS_DIRECTORY AUGMENTATIONS_DIRECTORY AUGMENTATIONS_PER_PATIENT SIMPLE[true/false]

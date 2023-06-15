@@ -57,15 +57,15 @@ def create_raw_database(patient_paths_list, task_directory, task_name=None, test
         for modality_number in range(len(IMAGE_MODALITIES)):
             source = patient_paths_list[patient_number]/IMAGE_MODALITIES[modality_number]
             destination = images_directory/f"{task_name}_{str(patient_number).zfill(4)}_{str(modality_number).zfill(4)}.nii.gz"
-            # destination.symlink_to(source)
-            os.symlink(source.absolute(), destination.absolute())
+            destination.absolute().symlink_to(source.absolute())
+            # os.symlink(source.absolute(), destination.absolute())
         if test:
             datum_dict = f"./imagesTr/{task_name}_{str(patient_number).zfill(4)}.nii.gz"
         else:
             source = patient_paths_list[patient_number]/CONTOUR_MODALITY
             destination = labels_directory/f"{task_name}_{str(patient_number).zfill(4)}.nii.gz"
-            # destination.symlink_to(source)
-            os.symlink(source, destination)
+            destination.absolute().symlink_to(source.absolute())
+            # os.symlink(source, destination)
             datum_dict = {"image": f"./imagesTr/{task_name}_{str(patient_number).zfill(4)}.nii.gz",
                           "label": f"./labelsTr/{task_name}_{str(patient_number).zfill(4)}.nii.gz"}
         datum_dicts.append(datum_dict)

@@ -304,6 +304,8 @@ def consistent_vector_field_transform(reference_image, peak_vectors_mm, peak_vox
 
 def generate_random_vector_field_transform(reference_image, maximum_displacements_mm=(10, 10, 10), peak_count=1,
                                            peak_width_mm=(1, 1, 1), verbose=False, kernel=None):
+    if kernel is None:
+        kernel = "gaussian"
     maximum_displacements_voxels = convert_mm_to_voxels_3d(maximum_displacements_mm, reference_image)
     peak_width_voxels = convert_mm_to_voxels_3d(peak_width_mm, reference_image)
     displacement_field_array = precalculated_generate_random_peaked_vector_field(reference_image.GetSize()[::-1],
